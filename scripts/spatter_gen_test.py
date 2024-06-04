@@ -24,7 +24,32 @@ def run_spatter_test(trace_path, num_cores):
     )
 
     memory = SingleChannelDDR4_2400(size="32GiB")
+
     generator = SpatterGenerator(num_cores)
+
+    trace = None
+    with open(trace_path, "r") as trace_file:
+        kernels = json.load(trace_file)
+
+    for i, kernel in enumerate(kernels):
+        delta, count, type, og_trace = parse_kernel(kernel)
+        traces = partition_trace(og_trace, num_cores, 128)
+        kernels = []
+        for trace in traces:
+            kernels.append(
+                SpatterKernel(
+                    kernel_id=i,
+                    kernel_delta=delta,
+                    kernel_count=count,
+                    kernel_type=type,
+                    kernel_trace=trace,
+                    index_size=4,
+                    base_index_addr=0,
+                    value_size=8,
+                    base_value_addr=memory.get_size(),
+                )
+            )
+        generator.add_kernel(kernels)
 
     board = TestBoard(
         clk_freq="4GHz",
@@ -34,27 +59,6 @@ def run_spatter_test(trace_path, num_cores):
         ),
         memory=memory,
     )
-
-    trace = None
-    with open(trace_path, "r") as trace_file:
-        kernels = json.load(trace_file)
-
-    for i, kernel in enumerate(kernels):
-        delta, count, type, og_trace = parse_kernel(kernel)
-        traces = partition_trace(og_trace, num_cores, 128)
-        for j, trace in enumerate(traces):
-            kernel = SpatterKernel(
-                kernel_id=i,
-                kernel_delta=delta,
-                kernel_count=count,
-                kernel_type=type,
-                kernel_trace=trace,
-                index_size=4,
-                base_index_addr=0,
-                value_size=8,
-                base_value_addr=memory.get_size(),
-            )
-            generator.cores[j].add_kernel(kernel)
 
     root = Root(full_system=False, system=board)
 
