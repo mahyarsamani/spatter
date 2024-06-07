@@ -23,6 +23,8 @@ def run_spatter_test(trace_path, num_cores):
         partition_trace,
     )
 
+    from gem5.simulate.simulator import Simulator
+
     memory = SingleChannelDDR4_2400(size="32GiB")
 
     generator = SpatterGenerator(num_cores)
@@ -46,7 +48,7 @@ def run_spatter_test(trace_path, num_cores):
                     index_size=4,
                     base_index_addr=0,
                     value_size=8,
-                    base_value_addr=memory.get_size(),
+                    base_value_addr=0x400000000,
                 )
             )
         generator.add_kernel(kernels)
@@ -60,24 +62,9 @@ def run_spatter_test(trace_path, num_cores):
         memory=memory,
     )
 
-    root = Root(full_system=False, system=board)
+    simulator = Simulator(board=board, full_system=False)
 
-    board._pre_instantiate()
-    m5.instantiate()
-
-    print("Starting traffic!")
-    generator.start_traffic()
-    print("Beginning simulation!")
-
-    expected_exit_count = num_cores
-    while True:
-        exit_event = m5.simulate()
-        print(f"Exiting @ tick {m5.curTick()} due to: {exit_event.getCause()}")
-        if "done generating requests." in exit_event.getCause():
-            expected_exit_count -= 1
-        if expected_exit_count == 0:
-            break
-        m5.stats.dump()
+    simulator.run()
 
 
 def get_inputs():
