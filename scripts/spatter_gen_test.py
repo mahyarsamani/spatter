@@ -27,7 +27,9 @@ def run_spatter_test(trace_path, num_cores):
 
     memory = SingleChannelDDR4_2400(size="32GiB")
 
-    generator = SpatterGenerator(num_cores)
+    generator = SpatterGenerator(
+        processing_mode="synchronous", num_cores=num_cores
+    )
 
     trace = None
     with open(trace_path, "r") as trace_file:
@@ -49,6 +51,7 @@ def run_spatter_test(trace_path, num_cores):
                     base_index_addr=0,
                     value_size=8,
                     base_value_addr=0x400000000,
+                    fix_empty_trace=True,
                 )
             )
         generator.add_kernel(kernels)
